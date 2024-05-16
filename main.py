@@ -1023,4 +1023,6 @@ def main(page: ft.Page):
     page.go(page.route)
 
 
-ft.app(target=main)
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    ft.app(target=main, port=port, view=None) # ポート番号を指定してアプリを起動
