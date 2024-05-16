@@ -500,6 +500,7 @@ def main(page: ft.Page):
 
         pick_files_dialog = ft.FilePicker(on_result=pick_files_result)
         page.overlay.append(pick_files_dialog)
+        page.update()  # ここでページを更新
         pick_files_dialog.pick_files(allow_multiple=False, allowed_extensions=["pdf"], dialog_title=file_name)
 
         os.remove(file_path)  # PDFのダウンロード後にファイルを削除
