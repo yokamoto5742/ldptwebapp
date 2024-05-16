@@ -494,8 +494,8 @@ def main(page: ft.Page):
         session.add(treatment_plan)
         session.commit()
         file_path = create_pdf(treatment_plan)
-        page.launch_url(file_path, "generated.pdf")
-
+        page.launch_url(file_path, "計画書_" + patient_info.patient_name + ".pdf")
+        os.remove(file_path)
         session.close()
         open_route(None)
 
@@ -506,7 +506,8 @@ def main(page: ft.Page):
             patient_info = session.query(PatientInfo).filter(PatientInfo.id == selected_row['id']).first()
             if patient_info:
                 file_path = create_pdf(patient_info)
-                page.launch_url(file_path, "generated.pdf")  # PDFをダウンロード
+                page.launch_url(file_path, "計画書_" + patient_info.patient_name + ".pdf")  # PDFをダウンロード
+                os.remove(file_path)  # 一時ファイルを削除
         session.close()
 
     def create_new_plan(e):
