@@ -489,19 +489,19 @@ def main(page: ft.Page):
         file_path = create_pdf(treatment_plan)
         file_name = "計画書_" + treatment_plan.patient_name + ".pdf"
 
-        def pick_files_result(e: ft.FilePickerResultEvent):
-            if e.files:
+        def on_download(e: ft.FilePickerResultEvent):
+            try:
                 with open(file_path, "rb") as f:
                     e.page.overlay.open = False
-                    e.files[0].data.write(f.read())
+                    e.data.put(f.read())
                     e.page.update()
-            else:
-                print("Cancelled!")
+            except Exception as e:
+                print(e)
 
-        pick_files_dialog = ft.FilePicker(on_result=pick_files_result)
+        pick_files_dialog = ft.FilePicker(on_result=on_download)
         page.overlay.append(pick_files_dialog)
-        page.update()  # ここでページを更新
-        pick_files_dialog.pick_files(allow_multiple=False, allowed_extensions=["pdf"], dialog_title=file_name)
+        page.update()
+        pick_files_dialog.save_file(file_name, file_path)
 
         os.remove(file_path)  # PDFのダウンロード後にファイルを削除
 
