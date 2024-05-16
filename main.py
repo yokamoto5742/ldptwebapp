@@ -8,6 +8,12 @@ from openpyxl import load_workbook
 from sqlalchemy import create_engine, Column, Integer, String, Float, Date, Boolean
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase import pdfmetrics
+
+# 日本語フォントの登録
+pdfmetrics.registerFont(TTFont('IPAexGothic', 'ipaexg.ttf'))
+
 
 # SQLAlchemyの設定
 db_url = "sqlite:///ldtp_app.db"
@@ -163,6 +169,110 @@ def format_date(date_str):
     if pd.isna(date_str):
         return ""
     return pd.to_datetime(date_str).strftime("%Y/%m/%d")
+
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase import pdfmetrics
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+
+# 日本語フォントの登録
+pdfmetrics.registerFont(TTFont('IPAexGothic', 'ipaexg.ttf'))
+
+def create_pdf(patient_info):
+    file_path = f"計画書_{patient_info.patient_name}.pdf"
+    doc = SimpleDocTemplate(file_path, pagesize=A4)
+    elements = []
+
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(name='Japanese', fontName='IPAexGothic'))
+
+    title_style = styles['Title']
+    title_style.fontName = 'IPAexGothic'
+    normal_style = styles['Japanese']
+
+    # タイトル
+    title = Paragraph("生活習慣病療養計画書", title_style)
+    elements.append(title)
+    elements.append(Spacer(1, 12))
+
+    # 患者情報
+    patient_info_data = [
+        [Paragraph("発行日", normal_style), Paragraph(patient_info.issue_date.strftime("%Y/%m/%d"), normal_style)],
+        [Paragraph("氏名", normal_style), Paragraph(patient_info.patient_name, normal_style)],
+        [Paragraph("生年月日", normal_style), Paragraph(patient_info.birthdate.strftime("%Y/%m/%d"), normal_style)],
+        [Paragraph("性別", normal_style), Paragraph(patient_info.gender, normal_style)]
+    ]
+    patient_info_table = Table(patient_info_data, colWidths=[100, 200])
+
+    patient_info_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'IPAexGothic'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+
+    elements.append(patient_info_table)
+    elements.append(Spacer(1, 12))
+
+    # 目標
+    target_data = [
+        [Paragraph(f"主病名 {patient_info.main_diagnosis}", normal_style),
+         Paragraph(f"{patient_info.sheet_name}", normal_style),
+         Paragraph(f"目標体重 {patient_info.target_weight}kg", normal_style)]
+    ]
+    target_table = Table(target_data, colWidths=[100, 150, 150, 150])
+    target_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'IPAexGothic'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    elements.append(target_table)
+    elements.append(Spacer(1, 12))
+
+    # 計画内容
+    plan_data = [
+        [Paragraph("目標", normal_style), Paragraph("内容", normal_style)],
+        [Paragraph("【①達成目標】", normal_style), Paragraph(patient_info.goal1, normal_style)],
+        [Paragraph("【②行動目標】", normal_style), Paragraph(patient_info.goal2, normal_style)],
+        [Paragraph("運動処方", normal_style), Paragraph(patient_info.exercise_prescription, normal_style)],
+        [Paragraph("時間", normal_style), Paragraph(patient_info.exercise_time, normal_style)],
+        [Paragraph("頻度", normal_style), Paragraph(patient_info.exercise_frequency, normal_style)],
+        [Paragraph("強度", normal_style), Paragraph(patient_info.exercise_intensity, normal_style)],
+        [Paragraph("日常生活での活動量の増加", normal_style), Paragraph(patient_info.daily_activity, normal_style)],
+        [Paragraph("非喫煙者である", normal_style),
+         Paragraph("はい" if patient_info.nonsmoker else "いいえ", normal_style)],
+        [Paragraph("禁煙の実施方法等を指示", normal_style),
+         Paragraph("いいえ" if patient_info.smoking_cessation else "はい", normal_style)],
+        [Paragraph("その他1", normal_style), Paragraph(patient_info.other1, normal_style)],
+        [Paragraph("その他2", normal_style), Paragraph(patient_info.other2, normal_style)]
+    ]
+
+    plan_table = Table(plan_data, colWidths=[200, 300])
+    plan_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'IPAexGothic'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    elements.append(plan_table)
+
+    # ドキュメントをビルド
+    doc.build(elements)
+    return file_path
+
+
 
 
 def main(page: ft.Page):
@@ -337,7 +447,8 @@ def main(page: ft.Page):
     def create_treatment_plan(patient_id, doctor_id, doctor_name, department, df_patients):
         session = Session()
         current_datetime = datetime.now().strftime("%Y%m%d_%H%M%S")
-        workbook = load_workbook(r"生活習慣病療養計画書.xlsm", keep_vba=True)
+        file_path = os.path.join(os.getcwd(), "生活習慣病療養計画書.xlsm")
+        workbook = load_workbook(file_path, keep_vba=True)
         common_sheet = workbook["共通情報"]
 
         patient_info_csv = df_patients.loc[df_patients.iloc[:, 2] == patient_id]
@@ -382,8 +493,10 @@ def main(page: ft.Page):
         populate_common_sheet(common_sheet, treatment_plan)
 
         new_file_name = f"生活習慣病療養計画書_{current_datetime}.xlsm"
-        file_path = r"C:\Shinseikai\LDTPapp" + "\\" + new_file_name
+        file_path = os.path.join(os.getcwd(), new_file_name)
+        workbook = load_workbook(r"生活習慣病療養計画書.xlsm", keep_vba=True)
         workbook.save(file_path)
+
         wb = load_workbook(file_path, read_only=False, keep_vba=True)
         ws_common = wb["共通情報"]
         ws_common.sheet_view.tabSelected = False
@@ -402,24 +515,8 @@ def main(page: ft.Page):
         if selected_row is not None:
             patient_info = session.query(PatientInfo).filter(PatientInfo.id == selected_row['id']).first()
             if patient_info:
-                current_datetime = datetime.now().strftime("%Y%m%d_%H%M%S")
-                workbook = load_workbook(r"C:\Shinseikai\LDTPapp\生活習慣病療養計画書.xlsm", keep_vba=True)
-                common_sheet = workbook["共通情報"]
-
-                populate_common_sheet(common_sheet, patient_info)
-
-                new_file_name = f"生活習慣病療養計画書_{current_datetime}.xlsm"
-                file_path = r"C:\Shinseikai\LDTPapp" + "\\" + new_file_name
-                workbook.save(file_path)
-                wb = load_workbook(file_path, read_only=False, keep_vba=True)
-                ws_common = wb["共通情報"]
-                ws_common.sheet_view.tabSelected = False
-                ws_plan = wb["計画書"]
-                ws_plan.sheet_view.tabSelected = True
-                wb.active = ws_plan
-                wb.save(file_path)
+                file_path = create_pdf(patient_info)
                 os.startfile(file_path)
-
         session.close()
 
     def create_new_plan(e):
@@ -1025,4 +1122,4 @@ def main(page: ft.Page):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    ft.app(target=main, port=port, view=None) # ポート番号を指定してアプリを起動
+    ft.app(target=main, port=port) # ポート番号を指定してアプリを起動
