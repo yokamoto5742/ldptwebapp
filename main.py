@@ -139,7 +139,7 @@ class TemplateManager:
 
 def load_patient_data():
     date_columns = [0, 6]
-    return pd.read_csv(r"C:\InnoKarte\pat.csv", encoding="shift_jis", header=None, parse_dates=date_columns)
+    return pd.read_csv("pat.csv", encoding="shift_jis", header=None, parse_dates=date_columns)
 
 
 def load_main_diseases():
@@ -337,7 +337,7 @@ def main(page: ft.Page):
     def create_treatment_plan(patient_id, doctor_id, doctor_name, department, df_patients):
         session = Session()
         current_datetime = datetime.now().strftime("%Y%m%d_%H%M%S")
-        workbook = load_workbook(r"C:\Shinseikai\LDTPapp\生活習慣病療養計画書.xlsm", keep_vba=True)
+        workbook = load_workbook(r"生活習慣病療養計画書.xlsm", keep_vba=True)
         common_sheet = workbook["共通情報"]
 
         patient_info_csv = df_patients.loc[df_patients.iloc[:, 2] == patient_id]
