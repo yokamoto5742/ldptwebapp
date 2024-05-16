@@ -416,35 +416,6 @@ def main(page: ft.Page):
             department_value.value = ""
         page.update()
 
-    def populate_common_sheet(common_sheet, patient_info):
-        common_sheet["B2"] = patient_info.patient_id
-        common_sheet["B3"] = patient_info.patient_name
-        common_sheet["B4"] = patient_info.kana
-        common_sheet["B5"] = patient_info.gender
-        common_sheet["B6"] = patient_info.birthdate
-        common_sheet["B7"] = patient_info.issue_date.strftime("%Y/%m/%d")
-        common_sheet["B8"] = patient_info.doctor_id
-        common_sheet["B9"] = patient_info.doctor_name
-        common_sheet["B10"] = patient_info.department
-        common_sheet["B11"] = patient_info.main_diagnosis
-        common_sheet["B12"] = patient_info.creation_count
-        common_sheet["B13"] = patient_info.target_weight
-        common_sheet["B14"] = patient_info.sheet_name
-        common_sheet["B15"] = patient_info.goal1
-        common_sheet["B16"] = patient_info.goal2
-        common_sheet["B17"] = patient_info.diet
-        common_sheet["B18"] = patient_info.exercise_prescription
-        common_sheet["B19"] = patient_info.exercise_time
-        common_sheet["B20"] = patient_info.exercise_frequency
-        common_sheet["B21"] = patient_info.exercise_intensity
-        common_sheet["B22"] = patient_info.daily_activity
-        common_sheet["B23"] = str(patient_info.nonsmoker)
-        common_sheet["B24"] = str(patient_info.smoking_cessation)
-        common_sheet["B25"] = patient_info.other1
-        common_sheet["B26"] = patient_info.other2
-
-    import flet as ft
-
     def create_treatment_plan(patient_id, doctor_id, doctor_name, department, df_patients):
         session = Session()
 
@@ -503,8 +474,8 @@ def main(page: ft.Page):
         page.update()
         pick_files_dialog.save_file(file_name, file_path)
 
-        os.remove(file_path)  # PDFのダウンロード後にファイルを削除
-
+        os.startfile(file_path)
+        # os.remove(file_path)  # 一時ファイルを削除
         session.close()
         open_route(None)
 
@@ -516,7 +487,9 @@ def main(page: ft.Page):
             if patient_info:
                 file_path = create_pdf(patient_info)
                 page.launch_url(file_path, "計画書_" + patient_info.patient_name + ".pdf")  # PDFをダウンロード
-                os.remove(file_path)  # 一時ファイルを削除
+                # PDFを開く
+                os.startfile(file_path)
+                # os.remove(file_path)  # 一時ファイルを削除
         session.close()
 
     def create_new_plan(e):
@@ -1126,6 +1099,8 @@ def main(page: ft.Page):
     page.go(page.route)
 
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    ft.app(target=main, port=port) # ポート番号を指定してアプリを起動
+ft.app(target=main)
+
+# if __name__ == "__main__":
+#     port = int(os.environ.get("PORT", 5000))
+#     ft.app(target=main, port=port) # ポート番号を指定してアプリを起動
