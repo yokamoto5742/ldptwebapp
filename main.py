@@ -4,16 +4,11 @@ from datetime import datetime
 import flet as ft
 import pandas as pd
 from flet import View
-from openpyxl import load_workbook
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from sqlalchemy import create_engine, Column, Integer, String, Float, Date, Boolean
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.pdfbase import pdfmetrics
-from reportlab.lib.pagesizes import A4
-from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 # 日本語フォントの登録
 pdfmetrics.registerFont(TTFont('IPAexGothic', 'ipaexg.ttf'))
@@ -450,11 +445,6 @@ def main(page: ft.Page):
 
     def create_treatment_plan(patient_id, doctor_id, doctor_name, department, df_patients):
         session = Session()
-        current_datetime = datetime.now().strftime("%Y%m%d_%H%M%S")
-        file_path = os.path.join(os.getcwd(), "生活習慣病療養計画書.xlsm")
-        workbook = load_workbook(file_path, keep_vba=True)
-        common_sheet = workbook["共通情報"]
-
         patient_info_csv = df_patients.loc[df_patients.iloc[:, 2] == patient_id]
 
         if patient_info_csv.empty:
@@ -494,8 +484,9 @@ def main(page: ft.Page):
         session.add(treatment_plan)
         session.commit()
         file_path = create_pdf(treatment_plan)
-        page.launch_url(file_path, "計画書_" + patient_info.patient_name + ".pdf")
-        os.remove(file_path)
+        page.launch_url(file_path, "計画書_" + treatment_plan.patient_name + ".pdf")
+        os.remove(file_path)  # PDFのダウンロード後にファイルを削除
+
         session.close()
         open_route(None)
 
@@ -521,7 +512,13 @@ def main(page: ft.Page):
             return
         department = department_value.value
 
-        create_treatment_plan(int(patient_id), int(doctor_id), doctor_name, department, df_patients)
+        patient_info_csv = df_patients.loc[df_patients.iloc[:, 2] == int(patient_id)]
+        if not patient_info_csv.empty:
+            create_treatment_plan(int(patient_id), int(doctor_id), doctor_name, department, patient_info_csv)
+        else:
+            page.snack_bar = ft.SnackBar(content=ft.Text(f"患者ID {patient_id} が見つかりません"))
+            page.snack_bar.open = True
+            page.update()
 
     def on_patient_id_change(e):
         patient_id = patient_id_value.value.strip()
