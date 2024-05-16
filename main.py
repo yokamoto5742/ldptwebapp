@@ -10,6 +10,10 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase import pdfmetrics
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 # 日本語フォントの登録
 pdfmetrics.registerFont(TTFont('IPAexGothic', 'ipaexg.ttf'))
@@ -489,22 +493,8 @@ def main(page: ft.Page):
         )
         session.add(treatment_plan)
         session.commit()
-
-        populate_common_sheet(common_sheet, treatment_plan)
-
-        new_file_name = f"生活習慣病療養計画書_{current_datetime}.xlsm"
-        file_path = os.path.join(os.getcwd(), new_file_name)
-        workbook = load_workbook(r"生活習慣病療養計画書.xlsm", keep_vba=True)
-        workbook.save(file_path)
-
-        wb = load_workbook(file_path, read_only=False, keep_vba=True)
-        ws_common = wb["共通情報"]
-        ws_common.sheet_view.tabSelected = False
-        ws_plan = wb["計画書"]
-        ws_plan.sheet_view.tabSelected = True
-        wb.active = ws_plan
-        wb.save(file_path)
-        os.startfile(file_path)
+        file_path = create_pdf(treatment_plan)
+        page.launch_url(file_path, "generated.pdf")
 
         session.close()
         open_route(None)
@@ -516,7 +506,7 @@ def main(page: ft.Page):
             patient_info = session.query(PatientInfo).filter(PatientInfo.id == selected_row['id']).first()
             if patient_info:
                 file_path = create_pdf(patient_info)
-                os.startfile(file_path)
+                page.launch_url(file_path, "generated.pdf")  # PDFをダウンロード
         session.close()
 
     def create_new_plan(e):
