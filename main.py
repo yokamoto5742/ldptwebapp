@@ -443,8 +443,11 @@ def main(page: ft.Page):
         common_sheet["B25"] = patient_info.other1
         common_sheet["B26"] = patient_info.other2
 
+    import flet as ft
+
     def create_treatment_plan(patient_id, doctor_id, doctor_name, department, df_patients):
         session = Session()
+
         patient_info_csv = df_patients.loc[df_patients.iloc[:, 2] == patient_id]
 
         if patient_info_csv.empty:
@@ -484,7 +487,21 @@ def main(page: ft.Page):
         session.add(treatment_plan)
         session.commit()
         file_path = create_pdf(treatment_plan)
-        page.launch_url(file_path, "計画書_" + treatment_plan.patient_name + ".pdf")
+        file_name = "計画書_" + treatment_plan.patient_name + ".pdf"
+
+        def pick_files_result(e: ft.FilePickerResultEvent):
+            if e.files:
+                with open(file_path, "rb") as f:
+                    e.page.overlay.open = False
+                    e.files[0].data.write(f.read())
+                    e.page.update()
+            else:
+                print("Cancelled!")
+
+        pick_files_dialog = ft.FilePicker(on_result=pick_files_result)
+        page.overlay.append(pick_files_dialog)
+        pick_files_dialog.pick_files(allow_multiple=False, allowed_extensions=["pdf"], dialog_title=file_name)
+
         os.remove(file_path)  # PDFのダウンロード後にファイルを削除
 
         session.close()
