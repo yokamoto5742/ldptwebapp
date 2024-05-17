@@ -2,6 +2,11 @@ import os
 from datetime import datetime
 
 import flet as ft
+from flet import Page, SnackBar
+from fastapi import FastAPI, Response
+from fastapi.responses import FileResponse
+from flet.fastapi import flet_fastapi
+
 import pandas as pd
 from flet import View
 from reportlab.pdfbase import pdfmetrics
@@ -271,7 +276,13 @@ def create_pdf(patient_info):
     doc.build(elements)
     return file_path
 
-
+def prepare_file(filename: str):
+    # ファイルの準備処理を行う
+    # 例えば、ファイルを一時ディレクトリにコピーするなど
+    temp_dir = "temp"
+    os.makedirs(temp_dir, exist_ok=True)
+    file_path = os.path.join(temp_dir, filename)
+    return file_path
 
 
 def main(page: ft.Page):
@@ -479,6 +490,8 @@ def main(page: ft.Page):
         session.close()
         open_route(None)
 
+    app = FastAPI()
+
     def print_plan(e):
         global selected_row
         session = Session()
@@ -486,11 +499,32 @@ def main(page: ft.Page):
             patient_info = session.query(PatientInfo).filter(PatientInfo.id == selected_row['id']).first()
             if patient_info:
                 file_path = create_pdf(patient_info)
-                page.launch_url(file_path, "計画書_" + patient_info.patient_name + ".pdf")  # PDFをダウンロード
-                # PDFを開く
-                os.startfile(file_path)
-                # os.remove(file_path)  # 一時ファイルを削除
+
+                # ファイル名を生成
+                filename = "計画書_" + patient_info.patient_name + ".pdf"
+
+                # ファイルを一時ディレクトリにコピー
+                temp_file_path = prepare_file(filename)
+                with open(file_path, 'rb') as src_file, open(temp_file_path, 'wb') as dst_file:
+                    dst_file.write(src_file.read())
+
+                # ダウンロードURLを生成
+                download_url = f"/download/{filename}"
+
+                page.snack_bar = ft.SnackBar(
+                    content=ft.Text(f"ダウンロードURL: {download_url}"),
+                    action="Copy",
+                    on_action=page.set_clipboard(download_url)
+                )
+                page.snack_bar.open = True
+                page.update()
+                # os.remove(file_path) # 一時ファイルを削除
         session.close()
+
+    @app.get("/download/{filename}")
+    async def download(filename: str):
+        path = prepare_file(filename)
+        return FileResponse(path, filename=filename, media_type='application/pdf')
 
     def create_new_plan(e):
         patient_id = patient_id_value.value.strip()
@@ -1099,8 +1133,8 @@ def main(page: ft.Page):
     page.go(page.route)
 
 
-ft.app(target=main)
+# ft.app(target=main)
 
-# if __name__ == "__main__":
-#     port = int(os.environ.get("PORT", 5000))
-#     ft.app(target=main, port=port) # ポート番号を指定してアプリを起動
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    ft.app(target=main, port=port) # ポート番号を指定してアプリを起動
