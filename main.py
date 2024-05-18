@@ -1,6 +1,9 @@
 import os
 from datetime import datetime
 
+from reportlab.pdfgen import canvas
+import io
+
 import flet as ft
 from flet import Page, SnackBar
 from fastapi import FastAPI, Response
@@ -14,6 +17,8 @@ from reportlab.pdfbase.ttfonts import TTFont
 from sqlalchemy import create_engine, Column, Integer, String, Float, Date, Boolean
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
+
+app_fastapi = FastAPI()
 
 # 日本語フォントの登録
 pdfmetrics.registerFont(TTFont('IPAexGothic', 'ipaexg.ttf'))
@@ -276,9 +281,8 @@ def create_pdf(patient_info):
     doc.build(elements)
     return file_path
 
+
 def prepare_file(filename: str):
-    # ファイルの準備処理を行う
-    # 例えば、ファイルを一時ディレクトリにコピーするなど
     temp_dir = "temp"
     os.makedirs(temp_dir, exist_ok=True)
     file_path = os.path.join(temp_dir, filename)
@@ -486,11 +490,9 @@ def main(page: ft.Page):
         pick_files_dialog.save_file(file_name, file_path)
 
         os.startfile(file_path)
-        # os.remove(file_path)  # 一時ファイルを削除
+        os.remove(file_path)  # 一時ファイルを削除
         session.close()
         open_route(None)
-
-    app = FastAPI()
 
     def print_plan(e):
         global selected_row
@@ -518,13 +520,33 @@ def main(page: ft.Page):
                 )
                 page.snack_bar.open = True
                 page.update()
-                # os.remove(file_path) # 一時ファイルを削除
+                os.remove(file_path) # 一時ファイルを削除
         session.close()
 
-    @app.get("/download/{filename}")
+
+
+    @app_fastapi.get("/download/{filename}")
     async def download(filename: str):
         path = prepare_file(filename)
         return FileResponse(path, filename=filename, media_type='application/pdf')
+
+    @app_fastapi.get("/download_pdf")
+    async def download_pdf():
+        # PDFファイルを生成する
+        buffer = io.BytesIO()
+        p = canvas.Canvas(buffer)
+        p.drawString(100, 100, "Hello, PDF!")
+        p.showPage()
+        p.save()
+
+        # バイトストリームを先頭に戻す
+        buffer.seek(0)
+
+        # レスポンスを作成し、ヘッダを設定する
+        response = Response(content=buffer.getvalue(), media_type="application/pdf")
+        response.headers["Content-Disposition"] = "attachment; filename=example.pdf"
+
+        return response
 
     def create_new_plan(e):
         patient_id = patient_id_value.value.strip()
@@ -1132,9 +1154,11 @@ def main(page: ft.Page):
     page.on_view_pop = view_pop
     page.go(page.route)
 
+app_flet = ft.app(target=main)
 
-# ft.app(target=main)
+
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    ft.app(target=main, port=port) # ポート番号を指定してアプリを起動
+    ft.app(target=main, port=8550, view=ft.WEB_BROWSER)
+    import uvicorn
+    uvicorn.run(app_fastapi, host="localhost", port=8500)
