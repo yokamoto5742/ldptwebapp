@@ -485,7 +485,7 @@ def main(page: ft.Page):
         session.commit()
         file_path = create_pdf(treatment_plan)
         page.launch_url(file_path, "計画書_" + treatment_plan.patient_name + ".pdf")
-        os.remove(file_path)  # PDFのダウンロード後にファイルを削除
+        os.remove(file_path)  # 本番環境用にPDFファイルを削除
 
         session.close()
         open_route(None)
@@ -498,7 +498,7 @@ def main(page: ft.Page):
             if patient_info:
                 file_path = create_pdf(patient_info)
                 page.launch_url(file_path, "計画書_" + patient_info.patient_name + ".pdf")  # PDFをダウンロード
-                os.remove(file_path)  # 一時ファイルを削除
+                os.remove(file_path)  # 本番環境用にPDFファイルを削除
         session.close()
 
     def create_new_plan(e):
